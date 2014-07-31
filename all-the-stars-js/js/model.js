@@ -25,101 +25,124 @@
 var model = model || {};
 model.inv = new Inventory();
 model.INVENTORY_SLOT = 0;
-model.lastCloudSaveVersion = '';
+model.lastSnapshot = {};
 
-model.loadCloudSave = function(callback) {
-  console.log("Loding cloud save data");
-  gapi.client.request({
-    path: login.appStatePath + '/states/' + model.INVENTORY_SLOT,
-    callback: function(response, rawResponse) {
-      console.log('Cloud get response: ', response, rawResponse);
-      var responseObject = JSON.parse(rawResponse);
-      if (responseObject.gapiRequest.data.status == 404) {
-        // Looks like there's no data. Must be our first time playing
-        model.inv.loadEmpty();
-      } else {
-        console.log('Here is your saved game ', response);
-        if (response.kind == ('appstate#getResponse') &&
-            response.hasOwnProperty('data')) {
-          model.inv.loadDataFromCloud(response.data);
-          model.lastCloudSaveVersion = response.currentStateVersion;
-        } else {
-          console.log("This was not the response I expected.");
-          model.inv.loadEmpty();
-        }
-      }
-      callback();
-    }
-  });
-};
+// TODO (class) accept snapshot object instead of ids
+/**
+ * Opens a snapshot using the games API.
+ *
+ * @param {string} driveId The identifier for the drive file to open.
+ * @param {string} id The identifier for the snapshot to open.
+ * @param {function} callback Called after the data is retrieved.
+ */
+model.openSnapshot = function(driveId, snapshotId, callback){
+  callback = callback ||
+      function(resp) {
+        model.inv.loadDataFromCloud(JSON.parse(resp));
+        game.refreshInterface();
+        $('#snaps').hide();
+      };
 
-model.beginMergeResolve = function(originalCallback) {
-  gapi.client.request({
-    path: login.appStatePath + '/states/' + model.INVENTORY_SLOT,
-    callback: function(response) {
-        if (response.kind == ('appstate#getResponse') &&
-            response.hasOwnProperty('data')) {
+  model.updateLastSnapshot(snapshotId);
+  gapi.client.drive.files.get({fileId: driveId}).execute(
+    function(ss){
+      model.downloadFile(ss,callback);
+    });
+}
 
-          // Merge the two sets of data
-          var serverData = new Inventory();
-          serverData.loadDataFromCloud(response.data);
-          var mergedData = new Inventory();
-          for (var world=1; world<=20; world++) {
-            for (var level=1; level<=12; level++) {
-              var maxStars = Math.max(model.inv.getStarsFor(world, level),
-                                      serverData.getStarsFor(world, level));
-              if (maxStars > 0) {
-                mergedData.setStarsFor(world, level, maxStars);
-              }
-            }
-          }
-          console.log("This is my merged data  " , mergedData);
-          model.lastCloudSaveVersion = response.currentStateVersion;
-          model.inv = mergedData;
-          model.saveToCloud(originalCallback);
-        } else {
-          console.log("Something really strange is going on");
-        }
-    }
-  });
-};
-
-model.saveToCloud = function(callback) {
-  console.log("Saving to cloud", atob(model.inv.getCloudSaveData()));
-  var paramsObj = {};
-  if (model.lastCloudSaveVersion != '') {
-    paramsObj['currentStateVersion'] = model.lastCloudSaveVersion;
+/**
+ * Download a Drive file's content.
+ *
+ * @param {File} file Drive File instance.
+ * @param {Function} callback Function to call when the request is complete.
+ */
+model.downloadFile = function (file, callback) {
+  if (file.downloadUrl) {
+    var accessToken = gapi.auth.getToken().access_token;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', file.downloadUrl);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+    xhr.onload = function() {
+      callback(xhr.responseText);
+    };
+    xhr.onerror = function() {
+      callback(null);
+    };
+    xhr.send();
+  } else {
+    callback(null);
   }
-  gapi.client.request({
-    path: login.appStatePath + '/states/' + model.INVENTORY_SLOT,
-    params: paramsObj,
-    body: {
-      kind: 'appstate#updateRequest',
-      data: model.inv.getCloudSaveData()
-    },
-    method: 'put',
-    callback: function (data, rawResponse) {
-      console.log('Cloud update response: ', data, rawResponse);
-      var responseObject = JSON.parse(rawResponse);
+}
 
-      if (responseObject.gapiRequest.data.status == 409) {
-        // Uh-oh! Conflict
-        console.log("We appear to be out of date");
-        model.beginMergeResolve(callback)
-        //model.requestUpdatedStateForMerging(objectToSave);
-      } else if (data.kind == "appstate#writeResult") {
-        // We'll want to look for an error
-        if (!data.hasOwnProperty('error')) {
-          // We need to update our version, and we'll save
-          // our inventory
-          model.lastCloudSaveVersion = data.currentStateVersion;
-          callback();
-        }
+/**
+ * Updates the model with the current snapshot data.
+ */
+model.updateLastSnapshot = function(snapshotId){
+  gapi.client.games.snapshots.get({snapshotId:snapshotId}).execute(
+      function(snapshot) {
+        model.lastSnapshot = snapshot;
       }
-    }
-  });
-};
+  );
+}
 
+/**
+ * Finds and saves the snapshot.
+ */
+model.saveSnapshot = function(){
+  // TODO: show conflicts
+  // Find the snapshot save file
+  gapi.client.drive.files.list(
+    {q:'title = "' + model.lastSnapshot.title + '" and mimeType = ' +
+        '"application/vnd.google-play-games.snapshot"'}).
+      execute(function(r){console.log(r)});
+}
+
+/**
+ * Update a drive file.
+ *
+ * @param {function} callback Function called after the file is uploaded.
+ */
+model.uploadLastSnapshot = function(callback){
+  var boundary = '-------374159275358879320846';
+  var delimiter = "\r\n--" + boundary + "\r\n";
+  var close_delim = "\r\n--" + boundary + "--";
+
+  var contentType = 'application/octet-stream';
+
+  // TODO (class) Use canvas element to update cover photo
+  // var pngCover = document.getElementById('snapshotCanvas').toDataURL();
+  // Update the description in the snapshot metadata.
+  model.lastSnapshot.description = 'Modified data at: ' + new Date();
+
+
+  var base64Data = btoa(JSON.stringify(model.inv.getCloudSaveData()));
+  model.lastSnapshot.id = model.lastSnapshot.driveId;
+  var multipartRequestBody =
+      delimiter +
+      'Content-Type: application/json\r\n\r\n' +
+      JSON.stringify(model.lastSnapshot) +
+      delimiter +
+      'Content-Type: ' + contentType + '\r\n' +
+      'Content-Transfer-Encoding: base64\r\n' +
+      '\r\n' +
+      base64Data +
+      close_delim;
+
+  var request = gapi.client.request({
+      'path': '/upload/drive/v2/files/' + model.lastSnapshot.driveId,
+      'method': 'PUT',
+      'params': {'uploadType': 'multipart', 'alt': 'json'},
+      'headers': {
+        'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'
+      },
+      'body': multipartRequestBody});
+  if (!callback) {
+    callback = function(file) {
+      console.log(file)
+    };
+  }
+  request.execute(callback);
+};
 
 
 model.getStarsFor = function(world, level) {

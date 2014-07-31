@@ -74,3 +74,103 @@ game.pickWorld = function(delta) {
   game.refreshInterface();
 
 };
+
+/**
+ * Toggles the logged in state of the user.
+ *
+ * @param {string} dispName The Display Name for the currently signed in user.
+ */
+game.toggleLogin = function(dispName){
+  if (dispName){
+    $('#authorized').show();
+    $('#unauthorized').hide();
+
+    $('#personal').html('Welcome, ' + dispName + '! ' +
+      '<button onClick="gapi.auth.signOut(); toggleLogin();">' +
+      'Sign Out</button>');
+    $('#game').fadeIn();
+    game.refreshInterface();
+  }else{
+    $('#authorized').hide();
+    $('#unauthorized').show();
+    $('#personal').html('');
+    $('#snapshotsArea').html('');
+    $('#game').fadeOut();$
+  }
+}
+
+/**
+ * This callback for when the Google+ client library loads personalizes the
+ * game.
+ */
+game.onPlusLoaded = function(){
+  console.log('Plus API loaded, personalizing: ');
+  gapi.client.plus.people.get({userId: 'me'}).execute(function(resp){
+    game.toggleLogin(resp.displayName);
+  });
+}
+
+/**
+ * After the Games API client has successfully loaded, this method will
+ * retrieve the snapshots and list them for the user.
+ */
+game.onClientLoaded = function(){
+  console.log('Games API loaded, listing snapshots.');
+
+  var loadDefaultSnapshot = function(snapshotResult){
+    for (var i=0; i < snapshotResult.items.length; i++){
+      if (snapshotResult.items[i].uniqueName == "snapshotTemp"){
+        model.lastSnapshot = snapshotResult.items[i];
+      }
+    }
+    if (!model.lastSnapshot){
+      model.lastSnapshot = snapshotResult.items[0];
+    }
+    model.openSnapshot(model.lastSnapshot.driveId, model.lastSnapshot.id,
+      function(resp) {
+        model.inv.loadDataFromCloud(JSON.parse(resp));
+        game.refreshInterface();
+        $('#snaps').hide();
+      });
+  }
+
+  game.loadSnapshots(loadDefaultSnapshot);
+}
+
+
+/**
+ * Loads the snapshots into the load game div.
+ */
+game.loadSnapshots = function(callback){
+  gapi.client.games.snapshots.list({playerId:'me'}).execute(
+    function (res){
+      $('#snapshotsArea').html('');
+      for (var i=0; i < res.result.items.length; i++){
+        var currSnap = res.result.items[i];
+        var html = game.getSnapshotHTML(currSnap);
+        $('#snapshotsArea').html(html + $('#snapshotsArea').html());
+        if (callback){
+          callback(res);
+        }
+      }
+    });
+}
+
+/**
+ * Gets the HTML for a snapshot div.
+ *
+ * @param {object} snapshot The snapshot to create HTML for.
+ */
+game.getSnapshotHTML = function(currSnap){
+  var html = '<div style="border-style:solid; border-color:#909090; border-size:2px; margin-right:5px; padding:20px;">\n';
+
+  // Image div
+  html += '  <div style="cursor: pointer;" onclick="model.openSnapshot(\'' +
+      currSnap.driveId + "','" + currSnap.id + '\')"' + ';>\n';
+  html += '    <img src="' + currSnap.coverImage.url + '" />\n' + '  </div>';
+  // Description div
+  html += '  <div>' + currSnap.description + '</div>';
+
+  html += '</div>';
+  return html;
+};

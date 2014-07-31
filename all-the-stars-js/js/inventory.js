@@ -44,7 +44,7 @@ function Inventory() {
   };
 
   this.loadDataFromCloud = function(cloudSaveData) {
-    var cloudSaveObject = JSON.parse(atob(cloudSaveData));
+    var cloudSaveObject = cloudSaveData;
     if (cloudSaveObject['version'] != '1.1') {
       myInv = {};
     } else {
@@ -54,8 +54,7 @@ function Inventory() {
 
   this.getCloudSaveData = function() {
     var cloudSaveObject = {'version': '1.1', 'levels': myInv};
-    return btoa(JSON.stringify(cloudSaveObject));
+    return cloudSaveObject;
   };
-
 
 }
