@@ -41,6 +41,9 @@ achievementTable.loadUp = function() {
 achievementTable.buildTableRowFromData = function(achObject) {
   var $tableRow = $('<tr></tr>');
   var $achievementName = $('<td></td>').text(achObject.name).addClass('achievementName');
+  if (!achObject.description){
+    achObject.description = "(no description given)";
+  }
   var $achievementDescrip = $('<td></td>').text(achObject.description).addClass('achievementDescrip');
   var $achievementURL = '';
   if (achObject.achievementState == 'REVEALED') {
