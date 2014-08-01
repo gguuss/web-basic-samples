@@ -1,24 +1,9 @@
-# Collect All the Stars
+# Collect All the Stars (Viewer / Editor)
 
 A sample application that demonstrates a simple case of loading and saving
-a user's information to the cloud. Also demonstrates conflict management.
-Works with the corresponding applications available for iOS and Android.
-
-## A note on the cloud save conflict resolution logic
-
-This test application was designed to demonstrate a typical use of cloud save:
-keeping track of the number of stars earned in a level, and making sure a user
-doesn't lose progress from one device to the next. In most mobile games, a user
-can only gain stars in a level; they'll never lose any. The conflict resolution
-logic is built around this assumption. In the case where the same level from two
-data sets has different numbers of stars, the larger number always wins.
-
-That being said, this is a test application, so we do allow you to save a
-smaller number of stars than what the user had before. The conflict resolution
-logic doesn't really take this into account.
-
-Also, note that in a real game, you should attempt to load and save cloud save
-data without requiring an explicit action from your user.
+a user's information to the cloud. Note that this should only be done for
+debugging: the mobile clients currently only can access the APIs for correctly
+saving and resolving conflicts.
 
 ## Code
 
@@ -40,8 +25,8 @@ files are located there:
 
 ## Running the sample application
 
-To run Collect All the Stars on your own server, you will need to create
-your own version of the game in the Play Console. Once you have done that,
+To run the Collect All the Stars viewer on your own server, you will need to
+create your own version of the game in the Play Console. Once you have done that,
 you will copy over your application and client IDs into your
 `js/constants.js` file. To follow this process, perform the following steps:
 
@@ -64,21 +49,6 @@ documentation
 
 That's it! Your application should be ready to run! (This application does
 not make use of achievements or leaderboards)
-
-That's it! Your application should be ready to run!
-
-## Running the sample as a Chrome Packaged App
-
-[Chrome Packaged Apps](https://developer.chrome.com/apps) enable apps to be
-written using HTML/JS/CSS, and this sample can be run with identical source
-for both hosted and packaged apps.
-
-1. Follow steps for running the sample application on a hosted server.
-2. From the [Google API console](https://code.google.com/apis/console)
-  `API Access` section, create a client ID for a chrome app. See
-  [Chrome Apps Identity](https://developer.chrome.com/apps/app_identity.html)
-  for how to obtain a stable app ID by adding a `key` to `manifest.json`.
-3. Edit the `manifest.json` file and add your client ID from the API console.
 
 That's it! Your application should be ready to run!
 

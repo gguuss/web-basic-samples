@@ -16,7 +16,7 @@
     "client_id": "111111111111-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/games",
-      "https://www.googleapis.com/auth/appstate"
+      "https://www.googleapis.com/auth/drive.appdata"
     ]
   }
 }

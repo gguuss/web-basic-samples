@@ -28,7 +28,7 @@ login.userId = '';
 login.loggedIn = false;
 
 
-login.scopes = 'https://www.googleapis.com/auth/games https://www.googleapis.com/auth/appstate';
+login.scopes = 'https://www.googleapis.com/auth/games https://www.googleapis.com/auth/drive.appdata';
 login.basePath = '/games/v1';
 login.appStatePath = '/appstate/v1';
 
@@ -52,10 +52,9 @@ login.handleAuthResult = function(auth) {
 
 login.trySilentAuth = function() {
   console.log('Trying silent auth');
-  gapi.auth.authorize({client_id: constants.CLIENT_ID, scope: login.scopes, immediate: true}, login.handleAuthResult);
+  //gapi.auth.authorize({client_id: constants.CLIENT_ID, scope: login.scopes, immediate: true}, login.handleAuthResult);
 };
 
 login.showLoginDialog=function() {
   gapi.auth.authorize({client_id: constants.CLIENT_ID, scope: login.scopes, immediate: false}, login.handleAuthResult);
 };
-

@@ -145,13 +145,33 @@ game.loadSnapshots = function(callback){
   gapi.client.games.snapshots.list({playerId:'me'}).execute(
     function (res){
       $('#snapshotsArea').html('');
-      for (var i=0; i < res.result.items.length; i++){
-        var currSnap = res.result.items[i];
-        var html = game.getSnapshotHTML(currSnap);
-        $('#snapshotsArea').html(html + $('#snapshotsArea').html());
-        if (callback){
-          callback(res);
+      console.log(res);
+      if (res.result.items){
+        for (var i=0; i < res.result.items.length; i++){
+          var currSnap = res.result.items[i];
+          var html = game.getSnapshotHTML(currSnap);
+          $('#snapshotsArea').html(html + $('#snapshotsArea').html());
+          if (callback){
+            callback(res);
+          }
         }
+      } else {
+        model.lastSnapshot = {
+          "kind":"games#snapshot",
+          "uniqueName":"snapshotTemp",
+          "type":"SAVE_GAME",
+          "title":"snapshotTemp",
+          "description":"Modified data at: " + new Date(),
+          "coverImage":
+            {
+              "kind":"games#snapshotImage",
+              "width":414,"height":492,
+              "mime_type":"image/png",
+              "url":""
+            },
+            "lastModifiedMillis":"1406933676066",
+            "durationMillis":"0",
+        };
       }
     });
 }
@@ -174,3 +194,34 @@ game.getSnapshotHTML = function(currSnap){
   html += '</div>';
   return html;
 };
+
+
+/**
+ * Draws the image data to hidden canvas and returns the data stream as
+ * a base64 string.
+ */
+game.getSnapshotImageData = function(){
+  var canvas = document.getElementById('snapImage');
+  var ctx = canvas.getContext('2d');
+
+  var currLevels = model.inv.getCloudSaveData();
+  var levelNames = Object.keys(currLevels.levels).sort();
+  for (var index = 0; index < levelNames.length; index++){
+    ctx.font = "10px Arial";
+    var starString = '';
+    for (var starIndex = 0; starIndex < 5; starIndex++){
+      if (starIndex < currLevels.levels[levelNames[index]]){
+        starString += '\u2605';
+      }else{
+        starString += '\u2606';
+      }
+    }
+
+    ctx.fillText("Level: " + JSON.stringify(levelNames[index]) + ' / ' +
+        starString, // currLevels.levels[levelNames[index]] + '/5',
+        10, 15 + (15 * index) );
+  }
+
+  console.log(canvas.toDataURL().split(',')[0]);
+  return canvas.toDataURL().split(',')[1];
+}
